@@ -1,0 +1,27 @@
+language: php
+
+# list of PHP version to test against
+php:
+  - 7.1
+  - 7.2
+  - 7.3
+
+matrix:
+  allow_failures:
+  - php: nightly
+
+sudo: false
+
+# build only the specified branches
+branches:
+  only:
+    - master
+    - develop
+
+before_script:
+  - git reset --hard HEAD
+  - mysql -e 'create database homestead_test;'
+  - composer self-update
+  - travis_retry composer install --no-interaction --prefer-source
+
+script: vendor/bin/phpunit --verbose
