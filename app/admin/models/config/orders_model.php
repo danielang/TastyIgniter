@@ -11,6 +11,7 @@ $config['list']['filter'] = [
             'conditions' => 'location_id = :filtered',
             'modelClass' => 'Admin\Models\Locations_model',
             'nameFrom' => 'location_name',
+            'locationContext' => 'multiple',
         ],
         'status' => [
             'label' => 'lang:admin::lang.orders.text_filter_status',
@@ -63,12 +64,14 @@ $config['list']['columns'] = [
     ],
     'order_id' => [
         'label' => 'lang:admin::lang.column_id',
+        'searchable' => TRUE,
     ],
     'location' => [
         'label' => 'lang:admin::lang.orders.column_location',
         'relation' => 'location',
         'select' => 'location_name',
         'searchable' => TRUE,
+        'locationContext' => 'multiple',
     ],
     'full_name' => [
         'label' => 'lang:admin::lang.orders.column_customer_name',
@@ -99,6 +102,7 @@ $config['list']['columns'] = [
         'type' => 'text',
         'relation' => 'assignee',
         'select' => 'staff_name',
+        'searchable' => TRUE,
     ],
     'order_total' => [
         'label' => 'lang:admin::lang.orders.column_total',

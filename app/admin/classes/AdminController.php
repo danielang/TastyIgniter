@@ -3,6 +3,7 @@
 namespace Admin\Classes;
 
 use Admin;
+use Admin\Models\Locations_model;
 use Admin\Traits\HasAuthentication;
 use Admin\Traits\ValidatesForm;
 use Admin\Traits\WidgetMaker;
@@ -235,16 +236,48 @@ class AdminController extends BaseController
     }
 
     //
-    // Helper Methods
+    // Locationable
     //
+
+    public function getLocationId()
+    {
+        if ($this->isSingleLocation())
+            return params('default_location_id');
+
+        return AdminAuth::getLocationId();
+    }
 
     public function locationContext()
     {
-        if ($this->getUser()->hasStrictLocationAccess())
-            return 'single';
-
-        return setting()->get('site_location_mode');
+        return $this->isSingleLocationContext()
+            ? Locations_model::LOCATION_CONTEXT_SINGLE
+            : Locations_model::LOCATION_CONTEXT_MULTIPLE;
     }
+
+    public function isSingleLocation()
+    {
+        return setting()->get('site_location_mode') === Locations_model::LOCATION_CONTEXT_SINGLE;
+    }
+
+    public function isSingleLocationContext()
+    {
+        return AdminAuth::isSingleLocationContext();
+    }
+
+    public function applyLocationScope($query)
+    {
+        if (!in_array(\Admin\Traits\Locationable::class, class_uses($query->getModel())))
+            return;
+
+        if (!$this->isSingleLocationContext())
+            return;
+
+        $query->whereHasLocation($this->getLocationId());
+    }
+
+    //
+    // Helper Methods
+    //
 
     public function pageUrl($path = null, $parameters = [], $secure = null)
     {

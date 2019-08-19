@@ -1,9 +1,5 @@
 <?php
 $config['list']['filter'] = [
-    'search' => [
-        'prompt' => 'lang:admin::lang.categories.text_filter_search',
-        'mode' => 'all' // or any, exact
-    ],
     'scopes' => [
         'location' => [
             'label' => 'lang:admin::lang.text_filter_location',
@@ -11,6 +7,7 @@ $config['list']['filter'] = [
             'scope' => 'whereHasLocation',
             'modelClass' => 'Admin\Models\Locations_model',
             'nameFrom' => 'location_name',
+            'locationContext' => 'multiple',
         ],
         'status' => [
             'label' => 'lang:admin::lang.categories.text_filter_status',
@@ -40,26 +37,24 @@ $config['list']['columns'] = [
     'name' => [
         'label' => 'lang:admin::lang.categories.column_name',
         'type' => 'text',
-        'searchable' => TRUE,
     ],
     'parent_cat' => [
         'label' => 'lang:admin::lang.categories.column_parent',
         'type' => 'text',
         'relation' => 'parent_cat',
         'select' => 'name',
-        'searchable' => TRUE,
     ],
     'locations' => [
         'label' => 'lang:admin::lang.column_location',
         'type' => 'text',
         'relation' => 'locations',
         'select' => 'location_name',
+        'locationContext' => 'multiple',
         'invisible' => TRUE,
     ],
     'priority' => [
         'label' => 'lang:admin::lang.categories.column_priority',
         'type' => 'text',
-        'searchable' => TRUE,
     ],
     'status' => [
         'label' => 'lang:admin::lang.categories.column_status',
@@ -125,6 +120,7 @@ $config['form']['fields'] = [
         'span' => 'right',
         'valueFrom' => 'locations',
         'nameFrom' => 'location_name',
+        'locationContext' => 'multiple',
     ],
     'priority' => [
         'label' => 'lang:admin::lang.categories.label_priority',

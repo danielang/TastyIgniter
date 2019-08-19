@@ -42,6 +42,7 @@ class ServiceProvider extends AppServiceProvider
     {
         parent::register('admin');
 
+        $this->registerActivityTypes();
         $this->registerMailTemplates();
 
         if ($this->app->runningInAdmin()) {
@@ -51,7 +52,6 @@ class ServiceProvider extends AppServiceProvider
             $this->registerMainMenuItems();
             $this->registerNavMenuItems();
             $this->registerOnboardingSteps();
-            $this->registerActivityTypes();
         }
     }
 
@@ -216,8 +216,9 @@ class ServiceProvider extends AppServiceProvider
                 'message' => [
                     'label' => 'lang:admin::lang.text_message_title',
                     'icon' => 'fa-envelope',
-                    'badge' => 'label-danger',
+                    'badge' => 'badge-danger',
                     'type' => 'dropdown',
+                    'badgeCount' => ['System\Models\Messages_model', 'unreadCount'],
                     'options' => ['System\Models\Messages_model', 'listMenuMessages'],
                     'partial' => '~/app/system/views/messages/latest',
                     'viewMoreUrl' => admin_url('messages'),
@@ -231,7 +232,9 @@ class ServiceProvider extends AppServiceProvider
                 'activity' => [
                     'label' => 'lang:admin::lang.text_activity_title',
                     'icon' => 'fa-bell',
+                    'badge' => 'badge-danger',
                     'type' => 'dropdown',
+                    'badgeCount' => ['System\Models\Activities_model', 'unreadCount'],
                     'options' => ['System\Models\Activities_model', 'listMenuActivities'],
                     'partial' => '~/app/system/views/activities/latest',
                     'viewMoreUrl' => admin_url('activities'),
@@ -519,7 +522,7 @@ class ServiceProvider extends AppServiceProvider
     {
         AdminMenu::registerCallback(function (Navigation $manager) {
             // Change nav menu if single location mode is activated
-            if (!AdminAuth::isStrictLocation())
+            if (!AdminAuth::isSingleLocationContext())
                 return;
 
             $manager->removeNavItem('locations', 'restaurant');

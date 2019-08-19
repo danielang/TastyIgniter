@@ -161,6 +161,7 @@ class FormController extends ControllerAction
         $formConfig['model'] = $model;
         $formConfig['arrayName'] = str_singular(strip_class_basename($model, '_model'));
         $formConfig['context'] = $context;
+        $formConfig['locationContext'] = $this->controller->locationContext();
 
         // Form Widget with extensibility
         $this->formWidget = $this->makeWidget('Admin\Widgets\Form', $formConfig);

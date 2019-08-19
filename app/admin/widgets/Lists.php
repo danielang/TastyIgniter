@@ -65,6 +65,12 @@ class Lists extends BaseWidget
      */
     public $defaultSort;
 
+    /**
+     * @var string The location context of this widget, columns that do not belong
+     * to this context will not be shown.
+     */
+    protected $locationContext;
+
     protected $defaultAlias = 'list';
 
     /**
@@ -144,6 +150,7 @@ class Lists extends BaseWidget
             'showCheckboxes',
             'showSorting',
             'defaultSort',
+            'locationContext',
         ]);
 
         $this->pageLimit = $this->getSession('page_limit',
@@ -240,7 +247,7 @@ class Lists extends BaseWidget
         $withs = [];
 
         // Extensibility
-        $this->fireEvent('admin.list.extendQueryBefore', [$query]);
+        $this->fireSystemEvent('admin.list.extendQueryBefore', [$query]);
 
         // Prepare searchable column names
         $primarySearchable = [];
@@ -259,7 +266,7 @@ class Lists extends BaseWidget
                 } // Primary
                 else {
                     $columnName = isset($column->sqlSelect)
-                        ? DB::raw($this->parseTableName($column->sqlSelect, $table))
+                        ? DB::raw($this->parseTableName($column->sqlSelect, $primaryTable))
                         : DB::getTablePrefix().$primaryTable.'.'.$column->columnName;
 
                     $primarySearchable[] = $columnName;
@@ -331,7 +338,7 @@ class Lists extends BaseWidget
                     ? Db::raw("group_concat(".$sqlSelect." separator ', ')")
                     : Db::raw($sqlSelect);
 
-                $joinSql = $countQuery->select($joinSql)->toSql();
+                $joinSql = $countQuery->select($joinSql)->toRawSql();
 
                 $selects[] = Db::raw("(".$joinSql.") as ".$alias);
             } // Primary column
@@ -494,6 +501,12 @@ class Lists extends BaseWidget
     public function addColumns(array $columns)
     {
         foreach ($columns as $columnName => $config) {
+            // Check that the filter scope matches the active location context
+            if (array_key_exists('locationContext', $config)) {
+                $locationContext = (array)$config['locationContext'];
+                if (!in_array($this->locationContext, $locationContext)) continue;
+            }
+
             $this->allColumns[$columnName] = $this->makeListColumn($columnName, $config);
         }
     }

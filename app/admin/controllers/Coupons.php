@@ -14,7 +14,7 @@ class Coupons extends \Admin\Classes\AdminController
             'model' => 'Admin\Models\Coupons_model',
             'title' => 'lang:admin::lang.coupons.text_title',
             'emptyMessage' => 'lang:admin::lang.coupons.text_empty',
-            'defaultSort' => ['date_added', 'DESC'],
+            'defaultSort' => ['coupon_id', 'DESC'],
             'configFile' => 'coupons_model',
         ],
     ];
@@ -82,6 +82,7 @@ class Coupons extends \Admin\Classes\AdminController
             ['recurring_to_time', 'lang:admin::lang.coupons.label_recurring_to_time', 'required_if:validity,recurring|valid_time'],
             ['order_restriction', 'lang:admin::lang.coupons.label_order_restriction', 'integer'],
             ['status', 'lang:admin::lang.label_status', 'required|integer'],
+            ['locations.*', 'lang:admin::lang.column_location', 'integer'],
         ];
 
         return $this->validatePasses(post($form->arrayName), $namedRules);
