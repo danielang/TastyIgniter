@@ -4,7 +4,7 @@
     <div class="widget-item card<?= ' '.$widget->property('cssClass'); ?> p-3 shadow-sm">
         <div class="widget-item-action">
             <a class="btn handle pull-left"><i class="fa fa-bars"></i></a>
-            <?php if ($this->canAddAndDelete) { ?>
+            <?php if ($this->canManage) { ?>
                 <a
                     class="btn pull-right"
                     data-control="remove-widget"
@@ -38,10 +38,6 @@
                 id="<?= $widgetAlias ?>-modal-content"
                 class="modal-content"
             >
-                <div class="loading hide">
-                    <span class="spinner"><i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i></span>
-                </div>
-
                 <?= $this->makePartial('dashboardcontainer/widget_form', [
                     'widgetAlias' => $widgetAlias,
                     'widget' => $widget,

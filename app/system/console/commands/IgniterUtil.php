@@ -3,8 +3,10 @@
 use Assets;
 use File;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\App;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
+use System\Classes\UpdateManager;
 
 class IgniterUtil extends Command
 {
@@ -56,7 +58,33 @@ class IgniterUtil extends Command
     {
         return [
             ['admin', null, InputOption::VALUE_NONE, 'Compile admin registered bundles.'],
+            ['minify', null, InputOption::VALUE_REQUIRED, 'Whether to minify the assets or not, default is 1.'],
         ];
+    }
+
+    protected function utilSetVersion()
+    {
+        $this->comment('Setting TastyIgniter version number...');
+
+        if (!App::hasDatabase()) {
+            $this->comment('Skipping - No database detected.');
+
+            return;
+        }
+
+        UpdateManager::instance()->setCoreVersion();
+
+        $this->comment('*** TastyIgniter sets latest version: '.params('ti_version'));
+
+        $this->comment('-');
+        sleep(1);
+        $this->comment('Ping? Pong!');
+        sleep(1);
+        $this->comment('Ping? Pong!');
+        sleep(1);
+        $this->comment('Ping? Pong!');
+        sleep(1);
+        $this->comment('-');
     }
 
     protected function utilCompileJs()
@@ -78,7 +106,7 @@ class IgniterUtil extends Command
     {
         $this->comment('Compiling registered asset bundles...');
 
-        config()->set('system.enableAssetMinify', TRUE);
+        config()->set('system.enableAssetMinify', (bool)$this->option('minify', TRUE));
         $appContext = $this->option('admin') ? 'admin' : 'main';
         $bundles = Assets::getBundles($type, $appContext);
 

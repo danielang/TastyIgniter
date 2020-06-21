@@ -2,7 +2,9 @@
 
 namespace System;
 
+use Admin\Classes\Location;
 use Admin\Classes\Navigation;
+use Admin\Classes\PermissionManager;
 use Admin\Classes\Template;
 use Admin\Classes\User;
 use Admin\Helpers\Admin as AdminHelper;
@@ -18,15 +20,16 @@ use Igniter\Flame\Support\HelperServiceProvider;
 use Igniter\Flame\Translation\Drivers\Database;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
 use Main\Classes\Customer;
 use Request;
 use Setting;
 use System\Classes\ErrorHandler;
 use System\Classes\ExtensionManager;
+use System\Classes\MailManager;
+use System\Helpers\ValidationHelper;
 use System\Libraries\Assets;
-use System\Models\Mail_templates_model;
-use System\Models\Settings_model;
 
 class ServiceProvider extends AppServiceProvider
 {
@@ -46,6 +49,7 @@ class ServiceProvider extends AppServiceProvider
         // Register all extensions
         ExtensionManager::instance()->registerExtensions();
 
+        $this->registerSchedule();
         $this->registerConsole();
         $this->registerErrorHandler();
         $this->registerMailer();
@@ -58,6 +62,10 @@ class ServiceProvider extends AppServiceProvider
                 $this->app->register('\\'.$module.'\ServiceProvider');
             }
         });
+
+        if (App::runningInAdmin()) {
+            $this->registerPermissions();
+        }
     }
 
     /**
@@ -78,6 +86,8 @@ class ServiceProvider extends AppServiceProvider
         $this->extendValidator();
         $this->addTranslationDriver();
         $this->defineQueryMacro();
+
+        $this->app['router']->pushMiddlewareToGroup('web', 'currency');
     }
 
     /*
@@ -122,6 +132,10 @@ class ServiceProvider extends AppServiceProvider
 
         App::singleton('admin.template', function ($app) {
             return new Template;
+        });
+
+        App::singleton('admin.location', function ($app) {
+            return new Location;
         });
 
         App::singleton('country', function ($app) {
@@ -205,18 +219,42 @@ class ServiceProvider extends AppServiceProvider
             return !(!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/', $value)
                 AND !preg_match('/^(1[012]|[1-9]):[0-5][0-9](\s)?(?i)(am|pm)$/', $value));
         });
+
+        Event::listen('validator.beforeMake', function ($args) {
+            $rules = ValidationHelper::prepareRules($args->rules);
+            $args->rules = Arr::get($rules, 'rules', $args->rules);
+            $args->customAttributes = Arr::get($rules, 'attributes', $args->customAttributes);
+        });
     }
 
     protected function registerMailer()
     {
-        Event::listen('mailer.beforeRegister', function () {
-            Settings_model::applyMailerConfigValues();
+        MailManager::instance()->registerCallback(function (MailManager $manager) {
+            $manager->registerMailLayouts([
+                'default' => 'system::_mail.layouts.default',
+            ]);
+
+            $manager->registerMailPartials([
+                'header' => 'system::_mail.partials.header',
+                'footer' => 'system::_mail.partials.footer',
+                'button' => 'system::_mail.partials.button',
+                'panel' => 'system::_mail.partials.panel',
+                'table' => 'system::_mail.partials.table',
+                'subcopy' => 'system::_mail.partials.subcopy',
+                'promotion' => 'system::_mail.partials.promotion',
+            ]);
         });
 
-        Event::listen('mailer.beforeAddContent', function ($mailer, $message, $view, $data) {
-            Mail_templates_model::addContentToMailer($message, $view, $data);
+        Event::listen('mailer.beforeRegister', function () {
+            MailManager::instance()->applyMailerConfigValues();
+        });
 
-            return FALSE;
+        Event::listen('mailer.beforeAddContent', function ($mailer, $message, $view, $data, $raw, $plain) {
+            // When "plain-text only" email is sent, $view is null, this sets the flag appropriately
+            $plainOnly = is_null($view);
+            $method = is_null($raw) ? 'addContentToMailer' : 'addRawContentToMailer';
+
+            return !MailManager::instance()->$method($message, $raw ?: $view ?: $plain, $data, $plainOnly);
         });
     }
 
@@ -250,6 +288,17 @@ class ServiceProvider extends AppServiceProvider
     {
         Event::listen('currency.beforeRegister', function () {
             app('config')->set('currency.default', setting('default_currency_code'));
+            app('config')->set('currency.converter', setting('currency_converter.api', 'openexchangerates'));
+            app('config')->set('currency.converters.openexchangerates.apiKey', setting('currency_converter.oer.apiKey'));
+            app('config')->set('currency.converters.fixerio.apiKey', setting('currency_converter.fixerio.apiKey'));
+            app('config')->set('currency.ratesCacheDuration', setting('currency_converter.refreshInterval'));
+            app('config')->set('currency.model', \System\Models\Currencies_model::class);
+        });
+
+        $this->app->resolving('translator.localization', function ($localization, $app) {
+            $app['config']->set('localization.locale', setting('default_language', $app['config']['app.locale']));
+            $app['config']->set('localization.supportedLocales', setting('supported_languages', []));
+            $app['config']->set('localization.detectBrowserLocale', (bool)setting('detect_language', FALSE));
         });
 
         $this->app->resolving('geocoder', function ($geocoder, $app) {
@@ -280,9 +329,12 @@ class ServiceProvider extends AppServiceProvider
                 '~/app/system/assets/node_modules/jquery/dist/jquery.min.js',
                 '~/app/system/assets/node_modules/popper.js/dist/umd/popper.min.js',
                 '~/app/system/assets/node_modules/bootstrap/dist/js/bootstrap.min.js',
+                '~/app/system/assets/node_modules/sweetalert/dist/sweetalert.min.js',
                 '~/app/system/assets/ui/js/vendor/waterfall.min.js',
                 '~/app/system/assets/ui/js/vendor/transition.js',
                 '~/app/system/assets/ui/js/app.js',
+                '~/app/system/assets/ui/js/loader.bar.js',
+                '~/app/system/assets/ui/js/loader.progress.js',
                 '~/app/system/assets/ui/js/flashmessage.js',
                 '~/app/system/assets/ui/js/toggler.js',
                 '~/app/system/assets/ui/js/trigger.js',
@@ -309,8 +361,6 @@ class ServiceProvider extends AppServiceProvider
             'languages' => 'System\Models\Languages_model',
             'mail_layouts' => 'System\Models\Mail_layouts_model',
             'mail_templates' => 'System\Models\Mail_templates_model',
-            'message_meta' => 'System\Models\Message_meta_model',
-            'messages' => 'System\Models\Messages_model',
             'pages' => 'System\Models\Pages_model',
             'permissions' => 'System\Models\Permissions_model',
             'settings' => 'System\Models\Settings_model',
@@ -337,6 +387,51 @@ class ServiceProvider extends AppServiceProvider
 
         \Illuminate\Database\Eloquent\Builder::macro('toRawSql', function () {
             return $this->getQuery()->toRawSql();
+        });
+    }
+
+    protected function registerSchedule()
+    {
+        Event::listen('console.schedule', function ($schedule) {
+            // Check for system updates every 12 hours
+            $schedule->call(function () {
+                Classes\UpdateManager::instance()->requestUpdateList(TRUE);
+            })->cron('0 */12 * * *')->evenInMaintenanceMode();
+        });
+    }
+
+    protected function registerPermissions()
+    {
+        PermissionManager::instance()->registerCallback(function ($manager) {
+            $manager->registerPermissions('System', [
+                'Admin.Activities' => [
+                    'label' => 'system::lang.permissions.activities', 'group' => 'system::lang.permissions.name',
+                ],
+                'Admin.Extensions' => [
+                    'label' => 'system::lang.permissions.extensions', 'group' => 'system::lang.permissions.name',
+                ],
+                'Admin.MailTemplates' => [
+                    'label' => 'system::lang.permissions.mail_templates', 'group' => 'system::lang.permissions.name',
+                ],
+                'Site.Countries' => [
+                    'label' => 'system::lang.permissions.countries', 'group' => 'system::lang.permissions.name',
+                ],
+                'Site.Currencies' => [
+                    'label' => 'system::lang.permissions.currencies', 'group' => 'system::lang.permissions.name',
+                ],
+                'Site.Languages' => [
+                    'label' => 'system::lang.permissions.languages', 'group' => 'system::lang.permissions.name',
+                ],
+                'Site.Settings' => [
+                    'label' => 'system::lang.permissions.settings', 'group' => 'system::lang.permissions.name',
+                ],
+                'Site.Updates' => [
+                    'label' => 'system::lang.permissions.updates', 'group' => 'system::lang.permissions.name',
+                ],
+                'Admin.ErrorLogs' => [
+                    'label' => 'system::lang.permissions.error_logs', 'group' => 'system::lang.permissions.name',
+                ],
+            ]);
         });
     }
 }

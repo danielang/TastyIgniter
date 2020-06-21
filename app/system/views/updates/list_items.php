@@ -1,18 +1,22 @@
 <div class="container-fluid">
     <?php foreach ($items as $item) { ?>
-        <div class="row pt-3 pb-3 align-items-center border-top">
-            <div class="col-sm-1 text-center">
-                <i class="fa <?= $item['icon'] ?> fa-2x text-muted"></i>
+        <div class="update-item row pt-3 pb-3 border-top <?= $ignored ? 'text-muted' : ''; ?>">
+            <div class="col-sm-1 pt-2 text-center text-muted">
+                <span
+                    class="extension-icon rounded"
+                    style="<?= $item['icon']['styles'] ?? ''; ?>"
+                ><i class="<?= $item['icon']['class'] ?? ''; ?>"></i></span>
             </div>
-            <div class="col col-sm-9">
-                <h5 class="<?= $ignored ? 'text-muted' : ''; ?>"><?= str_limit($item['name'], 22) ?></h5>
+            <div class="col-sm-2 pl-0 text-truncate">
+                <b><?= $item['name'] ?></b>
+                <p><?= $item['version'] ?></p>
+            </div>
+            <div class="description col col-sm-7">
                 <?php if (isset($item['tags']['data'][0]) AND $tag = $item['tags']['data'][0]) { ?>
-                    <p class="<?= $ignored ? 'text-muted ' : ''; ?>small mb-0">
-                        <strong><?= $tag['tag']; ?>:</strong> <?= $tag['description'] ?>
-                    </p>
+                    <?= $tag['description'] ?>
                 <?php } ?>
             </div>
-            <div class="col col-sm-2">
+            <div class="col col-sm-2 text-right">
                 <div class="btn-group btn-group-toggle" data-toggle="buttons">
                     <?php if ($ignored) { ?>
                         <button

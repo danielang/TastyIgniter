@@ -1,6 +1,11 @@
 <?php namespace System\Models;
 
+use ApplicationException;
+use File;
+use Igniter\Flame\Mail\MailParser;
 use Model;
+use System\Classes\MailManager;
+use View;
 
 /**
  * MailLayouts Model Class
@@ -24,15 +29,21 @@ class Mail_layouts_model extends Model
      */
     protected $primaryKey = 'template_id';
 
-    protected $fillable = ['name', 'code', 'language_id', 'layout', 'layout_css', 'plain_layout', 'status'];
+    protected $guarded = [];
 
     /**
      * @var array The model table column to convert to dates on insert/update
      */
     public $timestamps = TRUE;
 
+    public $casts = [
+        'language_id' => 'integer',
+        'status' => 'boolean',
+        'is_locked' => 'boolean',
+    ];
+
     public $relation = [
-        'hasMany'   => [
+        'hasMany' => [
             'templates' => ['System\Models\Mail_templates_model', 'foreignKey' => 'template_id', 'delete' => TRUE],
         ],
         'belongsTo' => [
@@ -43,6 +54,13 @@ class Mail_layouts_model extends Model
     public static function getDropdownOptions()
     {
         return self::dropdown('name');
+    }
+
+    protected function beforeDelete()
+    {
+        if ($this->is_locked) {
+            throw new ApplicationException('Cannot delete this template because it is locked');
+        }
     }
 
     //
@@ -74,5 +92,54 @@ class Mail_layouts_model extends Model
     public static function getIdFromCode($code)
     {
         return array_get(self::listCodes(), $code);
+    }
+
+    public function fillFromCode($code = null)
+    {
+        if (is_null($code))
+            $code = $this->code;
+
+        $definitions = MailManager::instance()->listRegisteredLayouts();
+        if (!$definition = array_get($definitions, $code))
+            throw new ApplicationException('Unable to find a registered layout with code: '.$code);
+
+        $this->fillFromView($definition);
+    }
+
+    public function fillFromView($path)
+    {
+        $sections = self::getTemplateSections($path);
+
+        $this->layout_css = '';
+        $this->name = array_get($sections, 'settings.name', '???');
+        $this->layout = array_get($sections, 'html');
+        $this->plain_layout = array_get($sections, 'text');
+    }
+
+    protected static function getTemplateSections($code)
+    {
+        return MailParser::parse(File::get(View::make($code)->getPath()));
+    }
+
+    /**
+     * Loops over each mail layout and ensures the system has a layout,
+     * if the layout does not exist, it will create one.
+     * @return void
+     */
+    public static function createLayouts()
+    {
+        $dbLayouts = self::lists('code', 'code')->all();
+
+        $definitions = MailManager::instance()->listRegisteredLayouts();
+        foreach ($definitions as $code => $path) {
+            if (array_key_exists($code, $dbLayouts))
+                continue;
+
+            $layout = new static;
+            $layout->code = $code;
+            $layout->is_locked = TRUE;
+            $layout->fillFromView($path);
+            $layout->save();
+        }
     }
 }

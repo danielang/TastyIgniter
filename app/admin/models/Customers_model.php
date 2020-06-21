@@ -45,16 +45,21 @@ class Customers_model extends AuthUserModel
             'group' => ['Admin\Models\Customer_groups_model', 'foreignKey' => 'customer_group_id'],
             'address' => 'Admin\Models\Addresses_model',
         ],
-        'morphMany' => [
-            'messages' => ['System\Models\Message_meta_model', 'name' => 'messagable'],
-        ],
     ];
 
-    public $purgeable = ['addresses'];
+    protected $purgeable = ['addresses'];
 
     public $appends = ['full_name'];
 
     public $casts = [
+        'customer_id' => 'integer',
+        'address_id' => 'integer',
+        'customer_group_id' => 'integer',
+        'newsletter' => 'boolean',
+        'status' => 'boolean',
+        'is_activated' => 'boolean',
+        'last_login' => 'datetime',
+        'date_activated' => 'datetime',
         'reset_time' => 'datetime',
     ];
 
@@ -75,11 +80,6 @@ class Customers_model extends AuthUserModel
     public function getEmailAttribute($value)
     {
         return strtolower($value);
-    }
-
-    public function getDateAddedAttribute($value)
-    {
-        return day_elapsed($value);
     }
 
     //
@@ -108,12 +108,12 @@ class Customers_model extends AuthUserModel
         ));
     }
 
-    public function afterCreate()
+    protected function afterCreate()
     {
         $this->saveCustomerGuestOrder();
     }
 
-    public function afterSave()
+    protected function afterSave()
     {
         $this->restorePurgedValues();
 
@@ -182,8 +182,8 @@ class Customers_model extends AuthUserModel
         $idsToKeep = [];
         foreach ($addresses as $address) {
             $customerAddress = $this->addresses()->updateOrCreate(
-                array_only($address, ['customer_id', 'address_id']),
-                $address
+                array_only($address, ['address_id']),
+                array_except($address, ['address_id', 'customer_id'])
             );
 
             $idsToKeep[] = $customerAddress->getKey();
@@ -216,12 +216,6 @@ class Customers_model extends AuthUserModel
 
                     if ($row['order_type'] == '1' AND !empty($row['address_id'])) {
                         Addresses_model::where('address_id', $row['address_id'])->update($update);
-                    }
-
-                    // @todo: move to paypal extension
-                    if (!empty($row['payment'])) {
-                        DB::table('pp_payments')->where('order_id', $row['order_id'])
-                          ->update(['customer_id' => $customer_id]);
                     }
                 }
             }

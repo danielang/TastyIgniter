@@ -50,8 +50,7 @@ class Extensions extends \Admin\Classes\AdminController
 
     public function index()
     {
-        if ($this->getUser()->hasPermission('Admin.Extensions.Manage'))
-            Extensions_model::syncAll();
+        Extensions_model::syncAll();
 
         $this->asExtension('ListController')->index();
     }
@@ -70,8 +69,8 @@ class Extensions extends \Admin\Classes\AdminController
                 throw new SystemException(lang('system::lang.extensions.alert_setting_not_found'));
             }
 
-            if ($settingItem->permissions AND !$this->getUser()->hasPermission($settingItem->permissions, TRUE))
-                return $this->redirectBack();
+            if ($settingItem->permissions AND !$this->getUser()->hasPermission($settingItem->permissions))
+                throw new SystemException(lang('admin::lang.alert_user_restricted'));
 
             $pageTitle = lang($settingItem->label ?: 'text_edit_title');
             Template::setTitle($pageTitle);
@@ -183,8 +182,8 @@ class Extensions extends \Admin\Classes\AdminController
             throw new SystemException(lang('system::lang.extensions.alert_setting_not_found'));
         }
 
-        if ($settingItem->permissions AND !$this->getUser()->hasPermission($settingItem->permissions, TRUE))
-            return $this->redirectBack();
+        if ($settingItem->permissions AND !$this->getUser()->hasPermission($settingItem->permissions))
+            throw new SystemException(lang('admin::lang.alert_user_restricted'));
 
         $model = $this->formFindModelObject($settingItem);
 
@@ -193,8 +192,8 @@ class Extensions extends \Admin\Classes\AdminController
         if ($this->formValidate($model, $this->formWidget) === FALSE)
             return Request::ajax() ? ['#notification' => $this->makePartial('flash')] : FALSE;
 
-        $model->set($this->formWidget->getSaveData());
-        if ($model->save()) {
+        $saved = $model->set($this->formWidget->getSaveData());
+        if ($saved) {
             flash()->success(sprintf(lang('admin::lang.alert_success'), lang($settingItem->label).' settings updated '));
         }
         else {
@@ -255,7 +254,7 @@ class Extensions extends \Admin\Classes\AdminController
             $attributes['class'] = $attributes['class'].' disabled';
 
         if ($column->columnName != 'delete' AND !$record->class)
-            $attributes['class'] = 'btn btn-outline-default disabled';
+            $attributes['class'] = $attributes['class'].' disabled';
 
         return $attributes;
     }
@@ -276,7 +275,7 @@ class Extensions extends \Admin\Classes\AdminController
         // Prep the optional toolbar widget
         if (isset($config['toolbar']) AND isset($this->widgets['toolbar'])) {
             $this->toolbarWidget = $this->widgets['toolbar'];
-            $this->toolbarWidget->addButtons(array_get($config['toolbar'], 'buttons', []));
+            $this->toolbarWidget->reInitialize($config['toolbar']);
         }
     }
 
@@ -312,9 +311,6 @@ class Extensions extends \Admin\Classes\AdminController
         $rules = [];
         if (isset($form->config['rules']))
             $rules = $form->config['rules'];
-
-        if ($modelRules = $model->validateRules($form))
-            $rules = $modelRules;
 
         return $this->validatePasses($form->getSaveData(), $rules);
     }

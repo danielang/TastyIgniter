@@ -19,11 +19,20 @@ mix.setPublicPath('./').options({
 // Copy fonts from node_modules
 //
 mix.copyDirectory(
-    'node_modules/@fortawesome/fontawesome-free-webfonts/webfonts',
+    'node_modules/@fortawesome/fontawesome-free/webfonts',
     'ui/fonts/FontAwesome'
 ).copy(
-    'node_modules/animate.css/animate.css',
+    'node_modules/animate.css/animate.min.css',
     'ui/scss/vendor/animate.scss'
+).copy(
+    'node_modules/bootstrap-colorpicker/dist/css/bootstrap-colorpicker.min.css',
+    '../../admin/formwidgets/colorpicker/assets/vendor/colorpicker/css/bootstrap-colorpicker.min.css'
+).copy(
+    'node_modules/bootstrap-colorpicker/dist/js/bootstrap-colorpicker.min.js',
+    '../../admin/formwidgets/colorpicker/assets/vendor/colorpicker/js/bootstrap-colorpicker.min.js'
+).copy(
+    'node_modules/metismenu/dist/metisMenu.min.js.map',
+    '../../admin/assets/js/metisMenu.min.js.map'
 );
 
 //
@@ -43,6 +52,8 @@ mix.copyDirectory(
 //         'ui/js/vendor/waterfall.min.js',
 //         'ui/js/vendor/transition.js',
 //         'ui/js/app.js',
+//         'ui/js/loader.bar.js',
+//         'ui/js/loader.progress.js',
 //         'ui/js/flashmessage.js',
 //         'ui/js/toggler.js',
 //         'ui/js/trigger.js',

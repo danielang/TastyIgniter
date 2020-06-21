@@ -1,16 +1,30 @@
 <?php
 $config['list']['toolbar'] = [
     'buttons' => [
-        'create' => ['label' => 'lang:admin::lang.button_new', 'class' => 'btn btn-primary', 'href' => 'mail_templates/create'],
+        'create' => [
+            'label' => 'lang:admin::lang.button_new',
+            'class' => 'btn btn-primary',
+            'href' => 'mail_templates/create',
+        ],
         'delete' => [
-            'label' => 'lang:admin::lang.button_delete', 'class' => 'btn btn-danger', 'data-request-form' => '#list-form',
-            'data-request' => 'onDelete', 'data-request-data' => "_method:'DELETE'",
+            'label' => 'lang:admin::lang.button_delete',
+            'class' => 'btn btn-danger',
+            'data-attach-loading' => '',
+            'data-request' => 'onDelete',
+            'data-request-form' => '#list-form',
+            'data-request-data' => "_method:'DELETE'",
             'data-request-confirm' => 'lang:admin::lang.alert_warning_confirm',
+            'data-progress-indicator' => 'admin::lang.text_deleting',
         ],
         'layouts' => [
             'label' => 'lang:system::lang.mail_templates.text_layouts',
             'class' => 'btn btn-default',
             'href' => 'mail_layouts',
+        ],
+        'partials' => [
+            'label' => 'lang:system::lang.mail_templates.text_partials',
+            'class' => 'btn btn-default',
+            'href' => 'mail_partials',
         ],
     ],
 ];
@@ -43,12 +57,12 @@ $config['list']['columns'] = [
     ],
     'date_updated' => [
         'label' => 'lang:system::lang.mail_templates.column_date_updated',
-        'type' => 'datesince',
+        'type' => 'timetense',
         'searchable' => TRUE,
     ],
     'date_added' => [
         'label' => 'lang:system::lang.mail_templates.column_date_added',
-        'type' => 'datesince',
+        'type' => 'timetense',
         'searchable' => TRUE,
     ],
     'template_data_id' => [
@@ -59,25 +73,32 @@ $config['list']['columns'] = [
 
 $config['form']['toolbar'] = [
     'buttons' => [
-        'save' => ['label' => 'lang:admin::lang.button_save', 'class' => 'btn btn-primary', 'data-request-submit' => 'true', 'data-request' => 'onSave'],
+        'save' => [
+            'label' => 'lang:admin::lang.button_save',
+            'class' => 'btn btn-primary',
+            'data-request' => 'onSave',
+            'data-progress-indicator' => 'admin::lang.text_saving',
+        ],
         'saveClose' => [
             'label' => 'lang:admin::lang.button_save_close',
             'class' => 'btn btn-default',
             'data-request' => 'onSave',
-            'data-request-submit' => 'true',
             'data-request-data' => 'close:1',
+            'data-progress-indicator' => 'admin::lang.text_saving',
         ],
         'delete' => [
-            'label' => 'lang:admin::lang.button_icon_delete', 'class' => 'btn btn-danger',
-            'data-request-submit' => 'true', 'data-request' => 'onDelete', 'data-request-data' => "_method:'DELETE'",
-            'data-request-confirm' => 'lang:admin::lang.alert_warning_confirm', 'context' => 'edit',
+            'label' => 'lang:admin::lang.button_icon_delete',
+            'class' => 'btn btn-danger',
+            'data-request' => 'onDelete',
+            'data-request-data' => "_method:'DELETE'",
+            'data-request-confirm' => 'lang:admin::lang.alert_warning_confirm',
+            'data-progress-indicator' => 'admin::lang.text_deleting',
+            'context' => 'edit',
         ],
         'test_message' => [
             'label' => 'lang:system::lang.mail_templates.button_test_message',
             'class' => 'btn btn-default',
-            'data-request' => 'onSave',
-            'data-request-submit' => 'true',
-            'data-request-data' => 'test:1',
+            'data-request' => 'onTestTemplate',
             'context' => 'edit',
         ],
     ],
@@ -90,7 +111,7 @@ $config['form']['fields'] = [
         'type' => 'text',
     ],
     'label' => [
-        'label' => 'lang:system::lang.mail_templates.label_description',
+        'label' => 'lang:admin::lang.label_description',
         'span' => 'right',
         'valueFrom' => 'title',
         'type' => 'text',
@@ -113,10 +134,10 @@ $config['form']['tabs'] = [
     'fields' => [
         'body' => [
             'tab' => 'lang:system::lang.mail_templates.label_body',
-            'type' => 'codeeditor',
+            'type' => 'markdowneditor',
         ],
         'plain_body' => [
-            'tab' => 'lang:system::lang.mail_templates.label_plain_body',
+            'tab' => 'lang:system::lang.mail_templates.label_plain',
             'type' => 'textarea',
             'attributes' => [
                 'rows' => 10,

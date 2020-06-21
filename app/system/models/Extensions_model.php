@@ -1,6 +1,9 @@
 <?php namespace System\Models;
 
+use File;
 use Igniter\Flame\Database\Builder;
+use Igniter\Flame\Exception\ApplicationException;
+use Igniter\Flame\Mail\Markdown;
 use Main\Classes\ThemeManager;
 use Model;
 use System\Classes\ExtensionManager;
@@ -12,6 +15,13 @@ use System\Classes\UpdateManager;
  */
 class Extensions_model extends Model
 {
+    const ICON_MIMETYPES = [
+        'svg' => 'image/svg+xml',
+        'png' => 'image/png',
+        'jpeg' => 'image/jpeg',
+        'jpg' => 'image/jpeg',
+    ];
+
     /**
      * @var string The database table name
      */
@@ -33,8 +43,6 @@ class Extensions_model extends Model
      * @var array The database records
      */
     protected $extensions = [];
-
-    protected $meta;
 
     /**
      * @var \System\Classes\BaseExtension
@@ -70,17 +78,14 @@ class Extensions_model extends Model
     // Accessors & Mutators
     //
 
-    protected static function updateInstalledExtensions($code, $enabled = TRUE)
-    {
-        ExtensionManager::instance()->updateInstalledExtensions($code, $enabled);
-        $installedExtensions = setting('installed_extensions', []);
-        $installedExtensions[$code] = $enabled;
-        setting()->set('installed_extensions', $installedExtensions)->save();
-    }
-
     public function getMetaAttribute()
     {
-        return $this->meta;
+        return $this->class ? $this->class->extensionMeta() : [];
+    }
+
+    public function getTitleAttribute($value)
+    {
+        return array_get($this->meta, 'name', $value);
     }
 
     public function getClassAttribute()
@@ -95,10 +100,44 @@ class Extensions_model extends Model
 
     public function getVersionAttribute($value)
     {
-        if (strlen($value))
+        return array_get($this->meta, 'version', $value);
+    }
+
+    public function getIconAttribute()
+    {
+        $icon = array_get($this->meta, 'icon', []);
+        if (is_string($icon))
+            $icon = ['class' => 'fa '.$icon];
+
+        if (strlen($image = array_get($icon, 'image'))) {
+            $file = extension_path(str_replace('.', '/', $this->name).'/'.$image);
+            if (file_exists($file)) {
+                $extension = pathinfo($file, PATHINFO_EXTENSION);
+                if (!array_key_exists($extension, self::ICON_MIMETYPES))
+                    throw new ApplicationException('Invalid extension icon type');
+
+                $mimeType = self::ICON_MIMETYPES[$extension];
+                $data = base64_encode(file_get_contents($file));
+                $icon['backgroundImage'] = [$mimeType, $data];
+                $icon['class'] = 'fa';
+            }
+        }
+
+        return generate_extension_icon($icon);
+    }
+
+    public function getDescriptionAttribute($value)
+    {
+        return array_get($this->meta, 'description', $value);
+    }
+
+    public function getReadmeAttribute($value)
+    {
+        $extensionPath = ExtensionManager::instance()->path($this->name);
+        if (!$readmePath = File::existsInsensitive($extensionPath.'readme.md'))
             return $value;
 
-        return array_get($this->meta, 'version');
+        return (new Markdown)->parse(File::get($readmePath));
     }
 
     //
@@ -114,7 +153,7 @@ class Extensions_model extends Model
     // Events
     //
 
-    public function afterFetch()
+    protected function afterFetch()
     {
         $this->applyExtensionClass();
     }
@@ -139,7 +178,6 @@ class Extensions_model extends Model
         }
 
         $this->class = $extensionClass;
-        $this->meta = $extensionClass->extensionMeta();
 
         return TRUE;
     }
@@ -216,7 +254,7 @@ class Extensions_model extends Model
             ])->save();
         }
 
-        self::updateInstalledExtensions($code, TRUE);
+        ExtensionManager::instance()->updateInstalledExtensions($code);
 
         return TRUE;
     }
@@ -238,7 +276,7 @@ class Extensions_model extends Model
             $query = $extensionModel->save();
         }
 
-        self::updateInstalledExtensions($code, FALSE);
+        ExtensionManager::instance()->updateInstalledExtensions($code, FALSE);
 
         return $query;
     }

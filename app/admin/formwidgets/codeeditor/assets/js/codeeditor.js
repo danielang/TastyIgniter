@@ -52,7 +52,7 @@
     }
 
     CodeEditor.prototype.registerHandlers = function () {
-        this.$form.on("submit", $.proxy(this.onSaveChanges, this))
+        this.$el.closest('[data-control="form-tabs"]').find('.nav-tabs').on('shown.bs.tab', $.proxy(this.refreshEditor, this))
     }
 
     CodeEditor.prototype.unregisterHandlers = function () {
@@ -76,12 +76,18 @@
     CodeEditor.prototype.initCodeMirror = function () {
         this.editor = CodeMirror.fromTextArea(this.$textarea[0], this.options)
         this.editor.setSize(null, this.options.height)
+
+        this.$form.on('ajaxSetup', $.proxy(this.onAjaxSetup, this))
     }
 
-    CodeEditor.prototype.onSaveChanges = function () {
-        var $element = $(this.options.changedSelector, this.$el)
+    CodeEditor.prototype.refreshEditor = function () {
+        if (this.$el.closest('.tab-pane').is(':visible')) {
+            this.editor.refresh()
+        }
+    }
 
-        $element.val(this.editor.isClean() ? "0" : "1")
+    CodeEditor.prototype.onAjaxSetup = function () {
+        this.editor.save();
     }
 
     // CodeEditor PLUGIN DEFINITION

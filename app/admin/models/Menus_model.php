@@ -3,8 +3,8 @@
 use Admin\Traits\Locationable;
 use Event;
 use Igniter\Flame\Database\Attach\HasMedia;
+use Igniter\Flame\Database\Model;
 use Igniter\Flame\Database\Traits\Purgeable;
-use Model;
 
 /**
  * Menus Model Class
@@ -29,14 +29,19 @@ class Menus_model extends Model
      */
     protected $primaryKey = 'menu_id';
 
-    protected $fillable = ['menu_name', 'menu_description', 'menu_price', 'menu_category_id',
-        'stock_qty', 'minimum_qty', 'subtract_stock', 'mealtime_id', 'menu_status', 'menu_priority'];
+    protected $guarded = [];
 
-    public $purgeable = [
-        'special', 'menu_options', 'categories', 'locations',
+    public $casts = [
+        'menu_price' => 'float',
+        'menu_category_id' => 'integer',
+        'mealtime_id' => 'integer',
+        'stock_qty' => 'integer',
+        'minimum_qty' => 'integer',
+        'subtract_stock' => 'boolean',
+        'order_restriction' => 'integer',
+        'menu_status' => 'boolean',
+        'menu_priority' => 'integer',
     ];
-
-    public $mediable = ['thumb'];
 
     public $relation = [
         'hasMany' => [
@@ -55,6 +60,10 @@ class Menus_model extends Model
             'locations' => ['Admin\Models\Locations_model', 'name' => 'locationable'],
         ],
     ];
+
+    protected $purgeable = ['special', 'menu_options', 'categories', 'locations'];
+
+    public $mediable = ['thumb'];
 
     public static $allowedSortingColumns = ['menu_priority asc', 'menu_priority desc'];
 
@@ -101,7 +110,7 @@ class Menus_model extends Model
                 if (count($parts) < 2) {
                     $parts[] = 'desc';
                 }
-                list($sortField, $sortDirection) = $parts;
+                [$sortField, $sortDirection] = $parts;
                 $query->orderBy($sortField, $sortDirection);
             }
         }
@@ -128,16 +137,15 @@ class Menus_model extends Model
     // Events
     //
 
-    public function afterSave()
+    protected function afterSave()
     {
         $this->restorePurgedValues();
 
         if (array_key_exists('special', $this->attributes))
             $this->addMenuSpecial((array)$this->attributes['special']);
 
-        if (array_key_exists('categories', $this->attributes)) {
+        if (array_key_exists('categories', $this->attributes))
             $this->addMenuCategories((array)$this->attributes['categories']);
-        }
 
         if (array_key_exists('locations', $this->attributes))
             $this->locations()->sync($this->attributes['locations']);
@@ -146,7 +154,7 @@ class Menus_model extends Model
             $this->addMenuOption((array)$this->attributes['menu_options']);
     }
 
-    public function beforeDelete()
+    protected function beforeDelete()
     {
         $this->addMenuCategories([]);
         $this->locations()->detach();
@@ -164,25 +172,27 @@ class Menus_model extends Model
     /**
      * Subtract or add to menu stock quantity
      *
-     * @param int $menu_id
      * @param int $quantity
-     * @param string $action
-     *
+     * @param bool $subtract
      * @return bool TRUE on success, or FALSE on failure
      */
-    public function updateStock($quantity = 0, $action = 'subtract')
+    public function updateStock($quantity = 0, $subtract = TRUE)
     {
-        if ($this->subtract_stock AND !empty($quantity))
+        if (!$this->subtract_stock)
             return FALSE;
 
-        $stockQty = $this->stock_qty + $quantity;
-        if ($action == 'subtract') {
-            $stockQty = $this->stock_qty - $quantity;
-        }
+        if ($this->stock_qty == 0)
+            return FALSE;
+
+        $stockQty = ($subtract === TRUE)
+            ? $this->stock_qty - $quantity
+            : $this->stock_qty + $quantity;
+
+        $stockQty = ($stockQty <= 0) ? -1 : $stockQty;
 
         $update = $this->update(['stock_qty' => $stockQty]);
 
-        Event::fire('admin.menu.stockUpdated', [$this, $quantity, $action]);
+        Event::fire('admin.menu.stockUpdated', [$this, $quantity, $subtract]);
 
         return $update;
     }

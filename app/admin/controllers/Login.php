@@ -73,7 +73,7 @@ class Login extends \Admin\Classes\AdminController
                         'reset_link' => admin_url('login/reset?code='.$user->reset_code),
                     ];
 
-                    Mail::send('admin::_mail.password_reset_request', $data, function ($message) use ($staff) {
+                    Mail::queue('admin::_mail.password_reset_request', $data, function ($message) use ($staff) {
                         $message->to($staff->staff_email, $staff->staff_name);
                     });
 
@@ -93,7 +93,7 @@ class Login extends \Admin\Classes\AdminController
                         'staff_name' => $user->staff->staff_name,
                     ];
 
-                    Mail::send('admin::_mail.password_reset', $data, function ($message) use ($user) {
+                    Mail::queue('admin::_mail.password_reset', $data, function ($message) use ($user) {
                         $message->to($user->staff->staff_email, $user->staff->staff_name);
                     });
 
@@ -134,7 +134,7 @@ class Login extends \Admin\Classes\AdminController
             ];
         }
         else {
-            $rules[] = ['email', 'lang:admin::lang.login.label_email', 'required|email|exists:staffs,staff_email'];
+            $rules[] = ['email', 'lang:admin::lang.label_email', 'required|email|exists:staffs,staff_email'];
         }
 
         return $this->validatePasses($post, $rules);

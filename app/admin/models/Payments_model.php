@@ -32,13 +32,16 @@ class Payments_model extends Model
      */
     protected $primaryKey = 'payment_id';
 
+    protected $fillable = ['name', 'code', 'class_name', 'description', 'data', 'status', 'is_default', 'priority'];
+
     public $timestamps = TRUE;
 
     public $casts = [
         'data' => 'serialize',
+        'status' => 'boolean',
+        'is_default' => 'boolean',
+        'priority' => 'integer',
     ];
-
-    protected $fillable = ['name', 'code', 'class_name', 'description', 'data', 'status', 'is_default', 'priority'];
 
     protected $purgeable = ['payment'];
 
@@ -91,7 +94,7 @@ class Payments_model extends Model
     // Events
     //
 
-    public function afterFetch()
+    protected function afterFetch()
     {
         $this->applyGatewayClass();
 
@@ -99,7 +102,7 @@ class Payments_model extends Model
             $this->attributes = array_merge($this->data, $this->attributes);
     }
 
-    public function beforeSave()
+    protected function beforeSave()
     {
         if (!$this->exists)
             return;

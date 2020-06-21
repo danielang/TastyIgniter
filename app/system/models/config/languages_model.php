@@ -15,9 +15,26 @@ $config['list']['filter'] = [
 
 $config['list']['toolbar'] = [
     'buttons' => [
-        'create' => ['label' => 'lang:admin::lang.button_new', 'class' => 'btn btn-primary', 'href' => 'languages/create'],
-        'delete' => ['label' => 'lang:admin::lang.button_delete', 'class' => 'btn btn-danger', 'data-request-form' => '#list-form', 'data-request' => 'onDelete', 'data-request-data' => "_method:'DELETE'", 'data-request-confirm' => 'lang:admin::lang.alert_warning_confirm'],
-        'filter' => ['label' => 'lang:admin::lang.button_icon_filter', 'class' => 'btn btn-default btn-filter', 'data-toggle' => 'list-filter', 'data-target' => '.list-filter'],
+        'create' => [
+            'label' => 'lang:admin::lang.button_new',
+            'class' => 'btn btn-primary',
+            'href' => 'languages/create',
+        ],
+        'delete' => [
+            'label' => 'lang:admin::lang.button_delete',
+            'class' => 'btn btn-danger',
+            'data-attach-loading' => '',
+            'data-request' => 'onDelete',
+            'data-request-form' => '#list-form',
+            'data-request-data' => "_method:'DELETE'",
+            'data-request-confirm' => 'lang:admin::lang.alert_warning_confirm',
+        ],
+        'filter' => [
+            'label' => 'lang:admin::lang.button_icon_filter',
+            'class' => 'btn btn-default btn-filter',
+            'data-toggle' => 'list-filter',
+            'data-target' => '.list-filter',
+        ],
     ],
 ];
 
@@ -31,7 +48,7 @@ $config['list']['columns'] = [
         ],
     ],
     'name' => [
-        'label' => 'lang:system::lang.languages.column_name',
+        'label' => 'lang:admin::lang.label_name',
         'type' => 'text',
         'searchable' => TRUE,
     ],
@@ -54,62 +71,105 @@ $config['list']['columns'] = [
 
 $config['form']['toolbar'] = [
     'buttons' => [
-        'save' => ['label' => 'lang:admin::lang.button_save', 'class' => 'btn btn-primary', 'data-request-submit' => 'true', 'data-request' => 'onSave'],
+        'save' => [
+            'label' => 'lang:admin::lang.button_save',
+            'class' => 'btn btn-primary',
+            'data-request' => 'onSave',
+            'data-progress-indicator' => 'admin::lang.text_saving',
+        ],
         'saveClose' => [
             'label' => 'lang:admin::lang.button_save_close',
             'class' => 'btn btn-default',
             'data-request' => 'onSave',
-            'data-request-submit' => 'true',
             'data-request-data' => 'close:1',
+            'data-progress-indicator' => 'admin::lang.text_saving',
         ],
         'delete' => [
-            'label' => 'lang:admin::lang.button_icon_delete', 'class' => 'btn btn-danger',
-            'data-request-submit' => 'true', 'data-request' => 'onDelete', 'data-request-data' => "_method:'DELETE'",
-            'data-request-confirm' => 'lang:admin::lang.alert_warning_confirm', 'context' => 'edit',
+            'label' => 'lang:admin::lang.button_icon_delete',
+            'class' => 'btn btn-danger',
+            'data-request' => 'onDelete',
+            'data-request-data' => "_method:'DELETE'",
+            'data-request-confirm' => 'lang:admin::lang.alert_warning_confirm',
+            'data-progress-indicator' => 'admin::lang.text_deleting',
+            'context' => ['edit'],
         ],
     ],
 ];
 
+$config['form']['fields'] = [
+    'name' => [
+        'label' => 'lang:admin::lang.label_name',
+        'type' => 'text',
+        'span' => 'none',
+        'cssClass' => 'pull-left flex-fill mr-3',
+    ],
+    'code' => [
+        'label' => 'lang:system::lang.languages.label_code',
+        'type' => 'text',
+        'span' => 'none',
+        'cssClass' => 'pull-left flex-fill mr-3',
+    ],
+    'status' => [
+        'label' => 'lang:admin::lang.label_status',
+        'type' => 'switch',
+        'span' => 'none',
+        'cssClass' => 'pull-left flex-fill',
+        'default' => TRUE,
+    ],
+    'section' => [
+        'type' => 'section',
+        'comment' => 'lang:system::lang.languages.help_language',
+    ],
+];
 $config['form']['tabs'] = [
     'defaultTab' => 'lang:system::lang.languages.text_tab_general',
     'fields' => [
-        'name' => [
-            'label' => 'lang:system::lang.languages.label_name',
-            'type' => 'text',
-        ],
-        'code' => [
-            'label' => 'lang:system::lang.languages.label_code',
-            'type' => 'text',
-            'span' => 'left',
-            'comment' => 'lang:system::lang.languages.help_language',
-        ],
-        'idiom' => [
-            'label' => 'lang:system::lang.languages.label_idiom',
-            'type' => 'text',
-            'span' => 'right',
-            'comment' => 'lang:system::lang.languages.help_idiom',
-        ],
-        'can_delete' => [
-            'label' => 'lang:system::lang.languages.label_can_delete',
-            'type' => 'switch',
-        ],
-        'status' => [
-            'label' => 'lang:admin::lang.label_status',
-            'default' => TRUE,
-            'type' => 'switch',
-        ],
-        'files' => [
-            'type' => 'partial',
+        '_file' => [
             'tab' => 'lang:system::lang.languages.text_tab_files',
+            'type' => 'select',
             'context' => 'edit',
-            'path' => 'languages/lang_files_list',
-            'options' => 'listAllFiles',
+            'options' => [],
+            'span' => 'none',
+            'placeholder' => 'system::lang.languages.text_filter_file',
+            'cssClass' => 'pull-left flex-fill mr-3',
+            'attributes' => [
+                'data-request' => 'onSubmitFilter',
+            ],
         ],
-        'file' => [
-            'tab' => 'lang:system::lang.languages.text_tab_edit_file',
-            'type' => 'partial',
+        '_search' => [
+            'tab' => 'lang:system::lang.languages.text_tab_files',
+            'type' => 'text',
             'context' => 'edit',
-            'path' => 'languages/lang_file',
+            'span' => 'none',
+            'cssClass' => 'pull-left flex-fill mr-3',
+            'placeholder' => lang('system::lang.languages.text_filter_translations'),
+            'attributes' => [
+                'data-control' => 'search-translations',
+                'data-request' => 'onSubmitFilter',
+            ],
+        ],
+        '_string_filter' => [
+            'tab' => 'lang:system::lang.languages.text_tab_files',
+            'type' => 'radio',
+            'context' => 'edit',
+            'span' => 'none',
+            'cssClass' => 'pull-left mr-3',
+            'default' => 'all',
+            'options' => [
+                'all' => 'All',
+                'unchanged' => 'Unchanged',
+                'changed' => 'Changed',
+            ],
+            'attributes' => [
+                'data-control' => 'string-filter',
+                'data-request' => 'onSubmitFilter',
+            ],
+        ],
+        'translations' => [
+            'tab' => 'lang:system::lang.languages.text_tab_files',
+            'type' => 'partial',
+            'path' => 'translationseditor',
+            'context' => 'edit',
         ],
     ],
 ];

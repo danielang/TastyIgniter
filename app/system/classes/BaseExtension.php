@@ -102,6 +102,16 @@ class BaseExtension extends ServiceProvider
     }
 
     /**
+     * Registers scheduled tasks that are executed on a regular basis.
+     *
+     * @param string $schedule
+     * @return void
+     */
+    public function registerSchedule($schedule)
+    {
+    }
+
+    /**
      * Registers any dashboard widgets provided by this extension.
      * @return array
      */
@@ -111,7 +121,7 @@ class BaseExtension extends ServiceProvider
     }
 
     /**
-     * Registers any form widgets implemented in this plugin.
+     * Registers any form widgets implemented in this extension.
      * The widgets must be returned in the following format:
      * ['className1' => 'alias'],
      * ['className2' => 'anotherAlias']

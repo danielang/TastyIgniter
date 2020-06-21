@@ -5,6 +5,7 @@ use ApplicationException;
 use Carbon\Carbon;
 use Config;
 use File;
+use Igniter\Flame\Mail\Markdown;
 use Main\Classes\ThemeManager;
 use Schema;
 use ZipArchive;
@@ -18,6 +19,13 @@ class UpdateManager
     use \Igniter\Flame\Traits\Singleton;
 
     protected $logs = [];
+
+    /**
+     * The output interface implementation.
+     *
+     * @var \Illuminate\Console\OutputStyle
+     */
+    protected $logsOutput;
 
     protected $baseDirectory;
 
@@ -61,6 +69,7 @@ class UpdateManager
         $this->hubManager = HubManager::instance();
         $this->extensionManager = ExtensionManager::instance();
         $this->themeManager = ThemeManager::instance();
+        $this->markdown = new Markdown;
 
         $this->tempDirectory = temp_path();
         $this->baseDirectory = base_path();
@@ -75,8 +84,25 @@ class UpdateManager
         $this->repository = App::make('migration.repository');
     }
 
+    /**
+     * Set the output implementation that should be used by the console.
+     *
+     * @param \Illuminate\Console\OutputStyle $output
+     * @return $this
+     */
+    public function setLogsOutput($output)
+    {
+        $this->logsOutput = $output;
+        $this->migrator->setOutput($output);
+
+        return $this;
+    }
+
     public function log($message)
     {
+        if (!is_null($this->logsOutput))
+            $this->logsOutput->writeln($message);
+
         $this->logs[] = $message;
 
         return $this;
@@ -97,6 +123,10 @@ class UpdateManager
         return $this->logs;
     }
 
+    //
+    //
+    //
+
     public function down()
     {
         // Rollback extensions
@@ -110,11 +140,7 @@ class UpdateManager
         foreach ($modules as $module) {
             $path = $this->getMigrationPath($module);
             $this->migrator->rollbackAll([$module => $path]);
-
-            $this->log($module);
-            foreach ($this->migrator->getNotes() as $note) {
-                $this->log(' - '.$note);
-            }
+            $this->log("<info>Rolled back app $module</info>");
         }
 
         $this->repository->deleteRepository();
@@ -151,7 +177,10 @@ class UpdateManager
     public function setCoreVersion($version = null, $hash = null)
     {
         params()->set('ti_version', $version ?? $this->getHubManager()->applyCoreVersion());
-        params()->set('sys_hash', $hash);
+
+        if (strlen($hash))
+            params()->set('sys_hash', $hash);
+
         params()->save();
     }
 
@@ -160,7 +189,7 @@ class UpdateManager
         $migrationTable = Config::get('database.migrations', 'migrations');
 
         if ($hasColumn = Schema::hasColumns($migrationTable, ['group', 'batch'])) {
-            $this->log('Migration table already created');
+            $this->log('Migration table already exists');
 
             return TRUE;
         }
@@ -177,10 +206,7 @@ class UpdateManager
 
         $this->migrator->run([$name => $path]);
 
-        $this->log($name);
-        foreach ($this->migrator->getNotes() as $note) {
-            $this->log(' - '.$note);
-        }
+        $this->log("<info>Migrated app $name</info>");
 
         return $this;
     }
@@ -201,27 +227,23 @@ class UpdateManager
 
     public function migrateExtension($name)
     {
-        if (!($extension = $this->extensionManager->findExtension($name))) {
+        if (!$this->extensionManager->findExtension($name)) {
             $this->log('<error>Unable to find:</error> '.$name);
 
             return FALSE;
         }
 
-        $extensionName = array_get($extension->extensionMeta(), 'name');
-        $this->log($extensionName);
         $path = $this->getMigrationPath($this->extensionManager->getNamePath($name));
         $this->migrator->run([$name => $path]);
 
-        foreach ($this->migrator->getNotes() as $note) {
-            $this->log(' - '.$note);
-        }
+        $this->log("<info>Migrated extension $name</info>");
 
         return $this;
     }
 
     public function purgeExtension($name)
     {
-        if (!($extension = $this->extensionManager->findExtension($name))) {
+        if (!$this->extensionManager->findExtension($name)) {
             $this->log('<error>Unable to find:</error> '.$name);
 
             return FALSE;
@@ -230,11 +252,7 @@ class UpdateManager
         $path = $this->getMigrationPath($this->extensionManager->getNamePath($name));
         $this->migrator->rollbackAll([$name => $path]);
 
-        $extensionName = array_get($extension->extensionMeta(), 'name');
-        $this->log($extensionName);
-        foreach ($this->migrator->getNotes() as $note) {
-            $this->log(' - '.$note);
-        }
+        $this->log("<info>Purged extension $name</info>");
 
         return $this;
     }
@@ -260,7 +278,7 @@ class UpdateManager
 
     public function isLastCheckDue()
     {
-        $response = $this->requestUpdateList(FALSE);
+        $response = $this->requestUpdateList();
 
         if (isset($response['last_check'])) {
             return (strtotime('-7 day') < strtotime($response['last_check']));
@@ -274,12 +292,16 @@ class UpdateManager
         $installedItems = $this->getInstalledItems();
 
         $items = $this->getHubManager()->listItems([
-            'browse' => 'popular',
+            'browse' => 'recommended',
+            'limit' => 9,
             'type' => $itemType,
         ]);
 
         $installedItems = array_column($installedItems, 'name');
         if (isset($items['data'])) foreach ($items['data'] as &$item) {
+            if ($item['type'] !== 'theme')
+                $item['icon'] = generate_extension_icon($item['icon'] ?? []);
+
             $item['installed'] = in_array($item['code'], $installedItems);
         }
 
@@ -297,6 +319,7 @@ class UpdateManager
 
         $installedItems = array_column($installedItems, 'name');
         if (isset($items['data'])) foreach ($items['data'] as &$item) {
+            $item['icon'] = generate_extension_icon($item['icon'] ?? []);
             $item['installed'] = in_array($item['code'], $installedItems);
         }
 
@@ -342,7 +365,10 @@ class UpdateManager
             $updateCount++;
             $update['installedVer'] = array_get(array_get($installedItems, $update['code'], []), 'ver');
 
+            $update = $this->parseTagDescription($update);
+
             if (array_get($update, 'type') == 'core') {
+                $update['icon'] = 'logo-icon icon-ti-logo';
                 $update['installedVer'] = params('ti_version');
                 if ($this->disableCoreUpdates)
                     continue;
@@ -353,6 +379,7 @@ class UpdateManager
                 continue;
             }
 
+            $update['icon'] = generate_extension_icon($update['icon'] ?? []);
             $items[] = $update;
         }
 
@@ -443,7 +470,7 @@ class UpdateManager
 
     public function setSecurityKey($key, $info)
     {
-        params()->set('carte_key', $key ? encrypt($key) : '');
+        params()->set('carte_key', $key ?: '');
 
         if ($info AND is_array($info))
             params()->set('carte_info', $info);
@@ -516,5 +543,17 @@ class UpdateManager
     protected function getHubManager()
     {
         return $this->hubManager;
+    }
+
+    protected function parseTagDescription($update)
+    {
+        $tags = array_get($update, 'tags.data', []);
+        foreach ($tags as &$tag) {
+            $tag['description'] = $this->markdown->parse($tag['description']);
+        }
+
+        array_set($update, 'tags.data', $tags);
+
+        return $update;
     }
 }

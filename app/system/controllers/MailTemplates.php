@@ -1,6 +1,7 @@
 <?php namespace System\Controllers;
 
 use AdminMenu;
+use ApplicationException;
 use Mail;
 use System\Models\Mail_templates_model;
 
@@ -24,6 +25,7 @@ class MailTemplates extends \Admin\Classes\AdminController
     public $formConfig = [
         'name' => 'lang:system::lang.mail_templates.text_form_name',
         'model' => 'System\Models\Mail_templates_model',
+        'request' => 'System\Requests\MailTemplate',
         'create' => [
             'title' => 'lang:system::lang.mail_templates.text_new_template_title',
             'redirect' => 'mail_templates/edit/{template_data_id}',
@@ -55,8 +57,7 @@ class MailTemplates extends \Admin\Classes\AdminController
 
     public function index()
     {
-        if ($this->getUser()->hasPermission('Admin.MailTemplates.Manage'))
-            Mail_templates_model::syncAll();
+        Mail_templates_model::syncAll();
 
         $this->asExtension('ListController')->index();
     }
@@ -74,30 +75,24 @@ class MailTemplates extends \Admin\Classes\AdminController
         $model->is_custom = TRUE;
     }
 
-    public function formAfterSave($model)
+    public function onTestTemplate($context, $recordId)
     {
-        if (post('test') != 1)
-            return;
+        if (!strlen($recordId))
+            throw new ApplicationException('Template id not found');
+
+        if (!$model = $this->formFindModelObject($recordId))
+            throw new ApplicationException('Template not found');
 
         $adminUser = $this->getUser()->staff;
 
-        Mail::send($model->code, [], function ($message) use ($adminUser) {
+        Mail::queue($model->code, [], function ($message) use ($adminUser) {
             $message->to($adminUser->staff_email, $adminUser->staff_name);
         });
 
         flash()->success(sprintf(lang('system::lang.mail_templates.alert_test_message_sent'), $adminUser->staff_email));
-    }
 
-    public function formValidate($model, $form)
-    {
-        $rules[] = ['template_id', 'lang:system::lang.mail_templates.label_layout', 'integer'];
-        $rules[] = ['label', 'lang:system::lang.mail_templates.label_description', 'required'];
-        $rules[] = ['subject', 'lang:system::lang.mail_templates.label_code', 'required'];
-
-        if ($form->context == 'create') {
-            $rules[] = ['code', 'lang:system::lang.mail_templates.label_code', 'required|min:2|max:32'];
-        }
-
-        return $this->validatePasses(post($form->arrayName), $rules);
+        return [
+            '#notification' => $this->makePartial('flash'),
+        ];
     }
 }

@@ -87,7 +87,7 @@ class ExtensionManager
     {
         foreach ($this->folders() as $extensionFolder) {
 
-            $extension = $this->checkName($extension);
+            $extension = $this->getNamePath($this->checkName($extension));
 
             // Check each folder for the extension's folder.
             if (File::isDirectory("{$extensionFolder}/{$extension}")) {
@@ -656,7 +656,7 @@ class ExtensionManager
 
         $this->saveInstalled();
 
-        if (!$enable AND $extension = $this->findExtension($code)) {
+        if ($enable === FALSE AND $extension = $this->findExtension($code)) {
             $extension->disabled = TRUE;
         }
 
@@ -735,7 +735,7 @@ class ExtensionManager
 
     protected function readInstalledExtensionsFromDb()
     {
-        if (!App::hasDatabase())
+        if (!App::hasDatabase() OR !App::bound('system.setting'))
             return;
 
         if (($installedExtensions = setting('installed_extensions')) AND is_array($installedExtensions)) {

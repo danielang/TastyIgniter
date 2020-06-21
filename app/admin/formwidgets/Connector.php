@@ -1,11 +1,12 @@
 <?php namespace Admin\FormWidgets;
 
 use Admin\Classes\BaseFormWidget;
+use Admin\Classes\FormField;
 use Admin\Traits\FormModelWidget;
 use Admin\Widgets\Form;
 use ApplicationException;
 use DB;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Collection;
 
 /**
  * Form Relationship
@@ -19,11 +20,6 @@ class Connector extends BaseFormWidget
     const INDEX_SEARCH = '___index__';
 
     const SORT_PREFIX = '___dragged_';
-
-    /**
-     * @var bool Stops nested repeaters populating from previous sibling.
-     */
-    protected static $onAddItemCalled = FALSE;
 
     //
     // Object properties
@@ -101,12 +97,7 @@ class Connector extends BaseFormWidget
 
     public function getSaveValue($value)
     {
-        if (!$this->sortable)
-            return [];
-
-        $items = $this->formField->value;
-
-        return (array)$this->processSaveValue($items);
+        return (array)$this->processSaveValue($value);
     }
 
     /**
@@ -129,6 +120,9 @@ class Connector extends BaseFormWidget
     {
         $recordId = post('recordId');
         $model = $this->getRelationModel()->find($recordId);
+
+        if (!$model)
+            throw new ApplicationException('Record not found');
 
         return $this->makePartial('recordeditor/form', [
             'formRecordId' => $recordId,
@@ -159,7 +153,7 @@ class Connector extends BaseFormWidget
 
         return [
             '#notification' => $this->makePartial('flash'),
-            '#'.$this->getId('items-container') => $this->makePartial('connector/connector'),
+            '#'.$this->getId('items') => $this->makePartial('connector/connector_items'),
         ];
     }
 
@@ -199,15 +193,22 @@ class Connector extends BaseFormWidget
 
     protected function processSaveValue($value)
     {
-        if ($value instanceof Collection)
-            $value = $value->toArray();
+        if (!$this->sortable)
+            return FormField::NO_SAVE_DATA;
 
-        if (!is_array($value) OR !$value) return $value;
+        $items = $this->formField->value;
+        if (!$items instanceof Collection)
+            return $items;
 
         $sortedIndexes = (array)post($this->sortableInputName);
+        $sortedIndexes = array_flip($sortedIndexes);
 
-        foreach ($value as $index => &$data) {
-            $data[$this->sortColumnName] = $sortedIndexes[$index];
+        $value = [];
+        foreach ($items as $index => $item) {
+            $value[$index] = [
+                $item->getKeyName() => $item->getKey(),
+                $this->sortColumnName => $sortedIndexes[$item->getKey()],
+            ];
         }
 
         return $value;

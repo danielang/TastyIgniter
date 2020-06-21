@@ -1,7 +1,6 @@
 <?php namespace System\Controllers;
 
 use AdminMenu;
-use System\Models\Mail_templates_model;
 
 class MailLayouts extends \Admin\Classes\AdminController
 {
@@ -23,6 +22,7 @@ class MailLayouts extends \Admin\Classes\AdminController
     public $formConfig = [
         'name' => 'lang:system::lang.mail_templates.text_form_name',
         'model' => 'System\Models\Mail_layouts_model',
+        'request' => 'System\Requests\MailLayout',
         'create' => [
             'title' => 'lang:admin::lang.form.create_title',
             'redirect' => 'mail_layouts/edit/{template_id}',
@@ -52,29 +52,11 @@ class MailLayouts extends \Admin\Classes\AdminController
         AdminMenu::setContext('mail_templates', 'design');
     }
 
-    public function index()
-    {
-        if ($this->getUser()->hasPermission('Admin.MailTemplates.Manage'))
-            Mail_templates_model::syncAll();
-
-        $this->asExtension('ListController')->index();
-    }
-
     public function formExtendFields($form)
     {
         if ($form->context != 'create') {
             $field = $form->getField('code');
             $field->disabled = TRUE;
         }
-    }
-
-    public function formValidate($model, $form)
-    {
-        $rules[] = ['name', 'lang:system::lang.mail_templates.label_name', 'required|min:2|max:32'];
-        $rules[] = ['language_id', 'lang:system::lang.mail_templates.label_language', 'required|integer'];
-
-        $rules[] = ['status', 'lang:admin::lang.label_status', 'required|integer'];
-
-        return $this->validatePasses(post($form->arrayName), $rules);
     }
 }

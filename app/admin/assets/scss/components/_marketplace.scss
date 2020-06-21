@@ -1,9 +1,11 @@
 .panel-search {
   margin-bottom: 0;
 }
+
 .panel-carte {
   margin-bottom: 0;
 }
+
 .panel-items {
   background-color: transparent !important;
 
@@ -18,17 +20,21 @@
   }
 
 }
+
 .items-list {
   padding-left: 0;
   padding-right: 0;
 }
+
 .items-list .panel-item {
   background-color: $gray-200;
   border: 1px solid $gray-300;
 }
+
 .item-extension .media {
   margin: 15px;
 }
+
 .search-group {
   margin-bottom: 0;
   position: relative;
@@ -69,6 +75,7 @@
     background-color: $gray-200;
     cursor: pointer;
   }
+
   .item-details {
     padding: 10px 0;
 
@@ -76,10 +83,6 @@
       width: 70px;
       text-align: center;
       float: left;
-
-      .fa {
-        padding: 10px 15px;
-      }
     }
 
     .item-name {
@@ -95,14 +98,42 @@
     border-top: 1px solid $gray-200;
   }
 }
-.panel-body.changelog {
-  overflow: auto;
-  height: 120px;
-  max-height: 120px;
-}
+
 #item-modal .modal-dialog {
   margin: 80px auto;
 }
+
 .panel-item-modal {
   margin-bottom: 0;
+}
+
+.update-item .description {
+  max-height: 120px;
+  overflow: auto;
+  position: relative;
+  font-size: 95%;
+
+  h1, h2, h3, h4, h5 {
+    font-size: 95%;
+  }
+}
+
+.extension-icon {
+  background-color: $gray-200;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: $gray-700;
+  line-height: 40px;
+  height: 40px;
+  width: 40px;
+  text-align: center;
+  display: inline-block;
+  font-size: 20px;
+
+  &.icon-lg {
+    height: 60px;
+    width: 60px;
+    line-height: 60px;
+    font-size: 32px;
+  }
 }

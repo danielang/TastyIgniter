@@ -24,9 +24,12 @@ class Menu_options_model extends Model
      */
     protected $primaryKey = 'option_id';
 
-    protected $guarded = [];
-
     protected $fillable = ['option_id', 'option_name', 'display_type'];
+
+    public $casts = [
+        'option_id' => 'integer',
+        'priority' => 'integer',
+    ];
 
     public $relation = [
         'hasMany' => [
@@ -40,7 +43,7 @@ class Menu_options_model extends Model
         ['display_type', 'lang:admin::lang.menu_options.label_display_type', 'required|alpha'],
     ];
 
-    public $purgeable = ['option_values'];
+    protected $purgeable = ['option_values'];
 
     public static function getRecordEditorOptions()
     {
@@ -48,11 +51,20 @@ class Menu_options_model extends Model
                    ->dropdown('display_name');
     }
 
+    public function getDisplayTypeOptions()
+    {
+        return [
+            'radio' => 'lang:admin::lang.menu_options.text_radio',
+            'checkbox' => 'lang:admin::lang.menu_options.text_checkbox',
+            'select' => 'lang:admin::lang.menu_options.text_select',
+        ];
+    }
+
     //
     // Events
     //
 
-    public function afterSave()
+    protected function afterSave()
     {
         $this->restorePurgedValues();
 
